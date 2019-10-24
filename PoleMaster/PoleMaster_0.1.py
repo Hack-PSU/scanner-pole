@@ -1,11 +1,13 @@
-# Prequistes:
+# Prequistes (Should be included in image):
 # SPI: https://github.com/lthiery/SPI-Py
 # sudo pip3 install rpi_ws281x adafruit-circuitpython-neopixel
+#Follow this link for set-up:
+#https://pimylifeup.com/raspberry-pi-rfid-rc522/
+#https://github.com/pimylifeup/MFRC522-python/tree/master/mfrc522
 #
-###GLOBAL AND RESEVERES WARNING#### 
-#An intialization fucntion may be used so that setup info is stored in a text or jason file
+###GLOBAL AND RESEVERES WARNING####
 #global active, available
-#global LockState, ServerParameters
+#global LockState
 AdminKeys = ["key 1 serial","key 2 serial", "Key N serial"]
 LockState = False
 FirstTimeStartup = True
@@ -20,7 +22,12 @@ import threading
 import urllib2
 import sys
 import os
-
+#this is to read the serial number from the tag
+###RFID IMPORT########
+from time import sleep
+import sys
+import RPi.GPIO as GPIO
+from mfrc522 import SimpleMFRC522
 
 ####SYSTEM LOGIC####==================================================================================================
 
@@ -50,83 +57,83 @@ def core():
         light(0)
         main()
 ## --------------STARTUP LOGIC-------------------------
-    def startUp(FirstTimeStartup):
-        check = SearchforTag(FirstTimeStartup)
-        if check != "-10000": #case return needs to be defined later
-            print("STATUS: Setup Has concluded going into autonomous mode")
-            restore() #X Not definded yet will load old config (10/20/19 completed -maz)
-            light(2)
-            return
+def startUp(FirstTimeStartup):
+    check = SearchforTag(FirstTimeStartup)
+    if check != "-10000": #case return needs to be defined later  ##I did 10/24/19 maz
+        print("STATUS: Setup Has concluded going into autonomous mode")
+        restore() #X Not definded yet will load old config (10/20/19 completed -maz)
+        light(2)
+        return
 
-        internet_test()
-        Events = GetMealEvents() #Not definded yet Daninels  or andrews job
+    internet_test()
+    Events = GetMealEvents() #Not definded yet Daninels  or andrews job
 
 #       Print("INPUT REQUIRRED: \n")
 #       Print("\n")
 
-        Print(Events) # some kind of graphical unpack will go here when we know what were dealing with
+    Print(Events) # some kind of graphical unpack will go here when we know what were dealing with
 
-        selection = input("INPUT REQUIRED: Select event ID as a ## number")
+    selection = input("INPUT REQUIRED: Select event ID as a ## number")
 
 
-        while True:
-            if selection in Events: ##needs fixed with more info
+    while True:
+        if selection in Events: ##needs fixed with more info
 
-                print("STATUS: Config Choosen as" + selection)
-                Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all")
-                if Con == "N":
-                    sys.exit()
-                print("STATUS: Setup has concluded going into autonomous mode")
-                #save slection parmeters to global
-                global ServerParameters
-                ServerParameters = [Events[slection]] ###BUG CHECK after we know paremeters
-                #save slection with save() function
-                Save()
-                break
+            print("STATUS: Config Choosen as" + selection)
+            Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all")
+            if Con == "N":
+                sys.exit()
+            print("STATUS: Setup has concluded going into autonomous mode")
+            #save slection parmeters to global
+            global ServerParameters
+            ServerParameters = [Events[slection]] ###BUG CHECK after we know paremeters
+            #save slection with save() function
+            Save()
+            break
 
-            else:
-                print("WARNING: Config " + selection + "Is not a valid selection")
-                selection = input("INPUT REQUIRED: Select event ID as a ## number")
+        else:
+            print("WARNING: Config " + selection + "Is not a valid selection")
+            selection = input("INPUT REQUIRED: Select event ID as a ## number")
 
-    ## --------------SAVE TO FILE--------------------------
-    #A function that will Creates or Edit a text file in the Present working dir. that takes no arguments but using the current global varible for server parameters
-    def Save():
-        global ServerParameters
-        Dir = os.getcwd()
-        f = open(os.path.join(Dir, 'ServerParameters.txt'), 'w')
-        f.write(str(ServerParameters))
-        f.close()
-    ## --------------LOAD FROM FILE-------------------------
-    #A function that will open and read a text file in the Present working dir. that returns nothing but will store the server parameters for current global varible
-    def Load():
-        global ServerParameters
-        Dir = os.getcwd()
-        f = open(os.path.join(Dir, 'ServerParameters.txt'), 'r')
-        out = f.read()
-        ServerParameters = out.strip('][').split(', ')  ###MAJOR BUG### Needs a for loop for casting once we know what "parsmters" look like
-        f.close()
-        #print(ServerParameters)
+## --------------SAVE TO FILE--------------------------
+#A function that will Creates or Edit a text file in the Present working dir. that takes no arguments but using the current global varible for server parameters
+def Save():
+    global ServerParameters
+    Dir = os.getcwd()
+    f = open(os.path.join(Dir, 'ServerParameters.txt'), 'w')
+    f.write(str(ServerParameters))
+    f.close()
+## --------------LOAD FROM FILE-------------------------
+#A function that will open and read a text file in the Present working dir. that returns nothing but will store the server parameters for current global varible
+def Load():
+    global ServerParameters
+    Dir = os.getcwd()
+    f = open(os.path.join(Dir, 'ServerParameters.txt'), 'r')
+    out = f.read()
+    ServerParameters = out.strip('][').split(', ')  ###MAJOR BUG### Needs a for loop for casting once we know what "parsmters" look like
+    f.close()
+    #print(ServerParameters)
 
-    ## --------------RESTORE--------------------------------
-    def restore():
-        Load()
-        global FirstTimeStartup
-        FirstTimeStartup = False
-    ## --------------INTERNET CHECK-------------------------
+## --------------RESTORE--------------------------------
+def restore():
+    Load()
+    global FirstTimeStartup
+    FirstTimeStartup = False
+## --------------INTERNET CHECK-------------------------
 
-    def internet_test():
+def internet_test():
 
-        print("STATUS: TESTING INTERNET")
-        url = "http://google.com" #change to hack server
-        try:
-            urllib.request.urlopen(url)
-        except urllib.error.URLError as e:
-            print("WARNING: " + e.reason)
-            print("ERROR: Network Down, soft reset recommended")
-            time.wait(1500)
-            sys.exit()
+    print("STATUS: TESTING INTERNET")
+    url = "http://google.com" #change to hack server
+    try:
+        urllib.request.urlopen(url)
+    except urllib.error.URLError as e:
+        print("WARNING: " + e.reason)
+        print("ERROR: Network Down, soft reset recommended")
+        time.wait(1500)
+        sys.exit()
 
-        print("STATUS: Connection Pass, we can see " + url)
+    print("STATUS: Connection Pass, we can see " + url)
 
 
 # --------------LOCK AND ADMIN-------------------------
@@ -144,6 +151,39 @@ def boxLockCheck(RfidSerial):
 
 
 ####END SYSTEM LOGIC####==============================================================================================
+
+
+####RFID STRUCTURE####===============================================================================================
+
+def SearchforTag(FirstTime):
+
+    reader = SimpleMFRC522()
+
+    # Try reading data from wrist band
+    try:
+        while True:
+            count = 0
+            while FirstTime:
+                data = reader.read()
+                id = data[0]
+                participant_number = data[1] #reomve dead code? verfify before alpha
+                time.sleep(1)
+                count =+ 1
+                if id:
+                    return id
+                if count == 10:
+                    return "-10000"
+
+            data = reader.read()
+            id = data[0]
+            participant_number = data[1]
+            if id:
+               return id ##BUG ALLERT###  #figure out wich one we need?
+    finally:
+        GPIO.cleanup()
+
+####END RFID STRUCTURE####===============================================================================================
+
 
 ####LIGHT RING STRUCTURE###===========================================================================================
 # LED strip configuration:
