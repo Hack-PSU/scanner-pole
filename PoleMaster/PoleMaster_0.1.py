@@ -12,6 +12,11 @@ AdminKeys = ["key 1 serial","key 2 serial", "Key N serial"]
 LockState = False
 FirstTimeStartup = True
 ServerParameters = [] #server prameters will be store as globs
+url = "http://104.39.243.21:3000"
+api_key = "940469cc-4f9e-445c-833c-54f7ad106011" ####BUG  obtained from adding scanner to redis-server
+pin = ""
+
+
 #
 ####LIGHT RING STRUCTURE IMPORT###====================================================================================
 import time
@@ -24,10 +29,14 @@ import sys
 import os
 #this is to read the serial number from the tag
 ###RFID IMPORT########
-from time import sleep
+from time import sleep #check me
 import sys
 import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
+###SEVER IMPORT###
+import requests
+
+
 
 ####SYSTEM LOGIC####==================================================================================================
 
@@ -40,12 +49,14 @@ def core():
     if boxLockCheck(currentTag) == True:
         main()
 
-    critical, status, admit = SendToServer(CurrentTag) #bolean,string,bolean
+    critical, status, admit = SendToServer(CurrentTag,ServerParameters[0]) #bolean,string,bolean
 
     if critical:                                                        #may add Soft Reset Proceedure on multi-fail???
         print("WARNING: Crit Error from server reply:" + status)
         light(4)
+        time.sleep(1)
         light(0)
+        main()
 
     if admit == False:
         light(3)
@@ -66,34 +77,37 @@ def startUp(FirstTimeStartup):
         return
 
     internet_test()
-    Events = GetMealEvents() #Not definded yet Daninels  or andrews job
+    meal = input("INPUT REQUIRED: Input what meal this is.")
+    #Events = GetMealEvents() #Not definded yet Daninels  or [andrew] job 10/24/19
+    Events = getEventLocation(meal)
+
 
 #       Print("INPUT REQUIRRED: \n")
 #       Print("\n")
 
-    Print(Events) # some kind of graphical unpack will go here when we know what were dealing with
+    Print("STATUS: " + Events + " Slected") # some kind of graphical unpack will go here when we know what were dealing with
 
-    selection = input("INPUT REQUIRED: Select event ID as a ## number")
+    #selection = input("INPUT REQUIRED: Select event ID as a ## number")
 
 
-    while True:
-        if selection in Events: ##needs fixed with more info
+    #while True:
+        #if selection in Events: ##needs fixed with more info
 
-            print("STATUS: Config Choosen as" + selection)
-            Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all")
-            if Con == "N":
-                sys.exit()
-            print("STATUS: Setup has concluded going into autonomous mode")
-            #save slection parmeters to global
-            global ServerParameters
-            ServerParameters = [Events[slection]] ###BUG CHECK after we know paremeters
-            #save slection with save() function
-            Save()
-            break
+    print("STATUS: Config Choosen as" + selection)
+    Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all")
+    if Con == "N":
+        sys.exit()
+    print("STATUS: Setup has concluded going into autonomous mode")
+    #save slection parmeters to global
+    global ServerParameters
+    ServerParameters = [Events] ###BUG CHECK after we know paremeters #fixed but need rechecked 9/24/19
+    #save slection with save() function
+    Save()
+        #break
 
-        else:
-            print("WARNING: Config " + selection + "Is not a valid selection")
-            selection = input("INPUT REQUIRED: Select event ID as a ## number")
+ #       else:
+ #           print("WARNING: Config " + selection + "Is not a valid selection")
+ #           selection = input("INPUT REQUIRED: Select event ID as a ## number")
 
 ## --------------SAVE TO FILE--------------------------
 #A function that will Creates or Edit a text file in the Present working dir. that takes no arguments but using the current global varible for server parameters
@@ -152,6 +166,71 @@ def boxLockCheck(RfidSerial):
 
 ####END SYSTEM LOGIC####==============================================================================================
 
+####SERVER LOGIC####=============================================================================++++=================
+
+# --------------------------- GET EVENT LOCATION AND DATA--------------------------------
+
+# function to get the event location if given a event title, used for the location in SendToServer
+# We will probably want to run this at start, with something like getEventLocation("Lunch")
+# all food events should return the same location unless its not all at the same place
+
+def getEventLocation(eventTitle):
+    foodLocation = 3
+    Location_Website = url + "/scanner/events"
+    # obtains the json data
+    response = requests.get(Location_Website)
+    data = response.json()
+
+    # returns if status is error
+    status = response.status_code
+    if status < 200 or status > 299:
+        print("ERROR:" + status)
+        return 0
+
+    # filtering what data to output
+    body = data["locations"]
+    for body in body:
+        if body["event_title"] == eventTitle:
+            # food[body["event_title"]] = body["uid"] #change this to choose what data to add to the output
+            return body["event_location"]
+
+
+# ----------------------------CORE INFORMATION TRANSMISSION-----------------------------
+
+# function to check if the person has already has lunch or not
+# insert the wid from scan and food event location to return whats needed
+# NOTE - currently the only available location is 3 untill stan fixes it
+def SendToServer(wid, location):
+    Scan_Website = url + "/scanner/scan"
+    arguments = {'wid': wid, 'location': location, 'apikey': api_key}
+    critical = False
+    admit = False
+
+    # obtains the json data and code
+    response = requests.post(Scan_Website, data=arguments)
+    data = response.json()
+    status = response.status_code
+
+    # returns if status is error
+    if status < 200 or status > 299:
+        critical = True
+        return critical, status, admit
+
+    # if no error, admit checks isRepeat and returns
+    admit = data["data"]["isRepeat"]
+    return critical, status, admit
+
+
+# if __name__ == "__main__":
+#     location = getEventLocation("Lunch")
+#
+#     wid = 1695694065  # obtained from wristband scan
+#     critical, status, admit = SendToServer(wid, 3)
+#     print(critical)
+#     print(status)
+#     print(admit)
+####SERVER LOGIC####=============================================================================++++=================
+
 
 ####RFID STRUCTURE####===============================================================================================
 
@@ -189,7 +268,7 @@ def SearchforTag(FirstTime):
 # LED strip configuration:
 LED_COUNT = 24  # Number of LED pixels.
 LED_BRIGHTNESS = 10  # Set to 0 for darkest and 255 for brightest
-LED_CHANNEL = 0
+#LED_CHANNEL = 0
 # --------------Custom-------------------------
 
 # Change D18 to D## if switching pins, I recommend using a pin with PWM
