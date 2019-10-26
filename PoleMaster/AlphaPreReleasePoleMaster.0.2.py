@@ -48,7 +48,7 @@ def core():
     global FirstTimeStartup
     time.sleep(1.5)
     currentTag = SearchforTag(FirstTimeStartup)
-    print("STATUS: Read tag " + currentTag)
+    print("STATUS: Read tag " + str(currentTag))
     if boxLockCheck(currentTag) == True:
         main()
 
