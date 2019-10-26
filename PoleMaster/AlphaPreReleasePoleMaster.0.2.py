@@ -4,14 +4,15 @@
 #Follow this link for set-up:
 #https://pimylifeup.com/raspberry-pi-rfid-rc522/
 #https://github.com/pimylifeup/MFRC522-python/tree/master/mfrc522
-#
+
+#Must be root or su!!!
 ###GLOBAL AND RESEVERES WARNING####
 #global active, available
 #global LockState
-AdminKeys = ["key 1 serial","key 2 serial", "Key N serial"]
+AdminKeys = [138561430561,"key 2 serial", "Key N serial"]
 LockState = False
 FirstTimeStartup = True
-ServerParameters = [] #server prameters will be store as globs
+ServerParameters = ["hack"] #server prameters will be store as globs
 url = "http://104.39.243.21:3000"
 api_key = "940469cc-4f9e-445c-833c-54f7ad106011" ####BUG  obtained from adding scanner to redis-server
 pin = ""
@@ -24,7 +25,7 @@ import board
 import neopixel
 import threading
 ###LOGIC IMPORT###
-import urllib2
+import urllib
 import sys
 import os
 #this is to read the serial number from the tag
@@ -45,11 +46,13 @@ import requests
 def core():
     light(0)
     global FirstTimeStartup
-    CurrentTag = SearchforTag(FirstTimeStartup)  # not defined yet
+    time.sleep(1.5)
+    currentTag = SearchforTag(FirstTimeStartup)
+    print("STATUS: Read tag " + currentTag)
     if boxLockCheck(currentTag) == True:
         main()
 
-    critical, status, admit = SendToServer(CurrentTag,ServerParameters[0]) #bolean,string,bolean
+    critical, status, admit = SendToServer(currentTag,ServerParameters[0]) #bolean,string,bolean
 
     if critical:                                                        #may add Soft Reset Proceedure on multi-fail???
         print("WARNING: Crit Error from server reply:" + status)
@@ -60,32 +63,33 @@ def core():
 
     if admit == False:
         light(3)
-        wait.time(5) #add to in between all
+        time.sleep(2) #add to in between all
         light(0)
         main()
     else:
         light(2)
+        time.sleep(2)
         light(0)
         main()
 ## --------------STARTUP LOGIC-------------------------
 def startUp(FirstTimeStartup):
     check = SearchforTag(FirstTimeStartup)
-    if check != "-10000": #case return needs to be defined later  ##I did 10/24/19 maz
+    if check == "-10000": #case return needs to be defined later  ##I did 10/24/19 maz
         print("STATUS: Setup Has concluded going into autonomous mode")
         restore() #X Not definded yet will load old config (10/20/19 completed -maz)
         light(2)
         return
 
     internet_test()
-    meal = input("INPUT REQUIRED: Input what meal this is.")
+    meal = input("INPUT REQUIRED: Input what meal this is \n")
     #Events = GetMealEvents() #Not definded yet Daninels  or [andrew] job 10/24/19
-    Events = getEventLocation(meal)
-
+    #Events = getEventLocation(meal) uncomit after done
+    Events = meal
 
 #       Print("INPUT REQUIRRED: \n")
 #       Print("\n")
 
-    Print("STATUS: " + Events + " Slected") # some kind of graphical unpack will go here when we know what were dealing with
+    print("STATUS: " + Events + " Slected") # some kind of graphical unpack will go here when we know what were dealing with
 
     #selection = input("INPUT REQUIRED: Select event ID as a ## number")
 
@@ -93,8 +97,8 @@ def startUp(FirstTimeStartup):
     #while True:
         #if selection in Events: ##needs fixed with more info
 
-    print("STATUS: Config Choosen as" + selection)
-    Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all")
+    print("STATUS: Config Choosen as " + Events)
+    Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all \n")
     if Con == "N":
         sys.exit()
     print("STATUS: Setup has concluded going into autonomous mode")
@@ -156,9 +160,12 @@ def boxLockCheck(RfidSerial):
     global AdminKeys, LockState
     if RfidSerial in AdminKeys:
         light(2)
+        time.sleep(5)
         LockState = not LockState
+        return True
     if LockState == True:
         light(3)
+        time.sleep(5)
         return True
     else:
         return False
@@ -184,7 +191,7 @@ def getEventLocation(eventTitle):
     # returns if status is error
     status = response.status_code
     if status < 200 or status > 299:
-        print("ERROR:" + status)
+        print("ERROR: " + status)
         return 0
 
     # filtering what data to output
@@ -245,7 +252,7 @@ def SearchforTag(FirstTime):
             while FirstTime:
                 data = reader.read()
                 id = data[0]
-                participant_number = data[1] #reomve dead code? verfify before alpha
+                #participant_number = data[1] #reomve dead code? verfify before alpha
                 time.sleep(1)
                 count =+ 1
                 if id:
@@ -255,7 +262,7 @@ def SearchforTag(FirstTime):
 
             data = reader.read()
             id = data[0]
-            participant_number = data[1]
+            #participant_number = data[1]
             if id:
                return id ##BUG ALLERT###  #figure out wich one we need?
     finally:
@@ -457,8 +464,7 @@ def main():
     if FirstTimeStartup:
         startUp(FirstTimeStartup)
         FirstTimeStartup = False
-
-    Core()
+    core()
 
 
 
@@ -495,9 +501,8 @@ def PLUS():
        /.   `./    \ `. \ / -  /  .-'.' ====='  >                    Daniel Melo Cruz (Debugging)
       /  \  /  .-' `--.  / .' /  `-.' ======.' /               Michael S Maslakowski (Core/Startup/Main)
 
-
+========================================================================================================================================
     """)
-
 if __name__ == '__main__':
     PLUS()
     main()
