@@ -38,6 +38,7 @@ import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 ###SEVER IMPORT###
 import requests
+import configparser
 
 
 
@@ -55,9 +56,14 @@ def core():
         main()
     light(1)
     
-    time.sleep(3)
-    critical, status, admit = True, 'bad has occoured', False #testing puroposes
-    #critical, status, admit = SendToServer(currentTag,ServerParameters[0]) #bolean,string,bolean
+    #if currentTag == 584190934989: #democode
+    #    time.sleep(3)
+    #    critical, status, admit = False, 'accept', True #testing puroposes
+    #if currentTag == 584187132915:
+    #    time.sleep(3)
+    #    critical, status, admit = False, 'accept', False #testing puroposes
+    #else:    
+    critical, status, admit = SendToServer(currentTag,ServerParameters[0]) #bolean,string,bolean
 
     if critical:                                                        #may add Soft Reset Proceedure on multi-fail???
         print("WARNING: Crit Error from server reply: " + status)
@@ -83,7 +89,7 @@ def core():
 ## --------------STARTUP LOGIC-------------------------
 def startUp(FirstTimeStartup):
     check = SearchforTag(FirstTimeStartup)
-    if check == "-10000": #case return needs to be defined later  ##I did 10/24/19 maz
+    if check != "-10000": #case return needs to be defined later  ##I did 10/24/19 maz
         print("STATUS: Setup Has concluded going into autonomous mode")
         restore() #X Not definded yet will load old config (10/20/19 completed -maz)
         light(2)
@@ -92,8 +98,8 @@ def startUp(FirstTimeStartup):
     internet_test()
     meal = input("INPUT REQUIRED: Input what meal this is \n")
     #Events = GetMealEvents() #Not definded yet Daninels  or [andrew] job 10/24/19
-    #Events = getEventLocation(meal) uncomit after done
-    Events = meal
+    Events = str(getEventLocation(meal)) #uncomit after done
+    #Events = meal
 
 #       Print("INPUT REQUIRRED: \n")
 #       Print("\n")
@@ -596,13 +602,14 @@ def PLUS():
             |-(=-=-=-=-=-(|=====/=_-=/\.             Fall 2019 Alpha Release 1.0 - Point Of Location for Eating (POLE)
             | |=_-= _=- _=| -_=/=_-_/__\.
             | |- _ =_-  _-|=_- |]#| I II                        Technology Director - Julia M McCarthy
-            |=|_/ \_-_= - |- = |]#| I II                       RFID Project Lead - Michael S Maslakowski
+            |=|_/ \_-_= - |- = |]#| I II                       RFID Program Lead - Michael S Maslakowski
             | /  _/ \. -_=| =__|]!!!I_II!!                    
            _|/-'/  ` \_/ \|/' _ ^^^^`.==_^.                                   RFID Team:
          _/  _/`-./`-; `-.\_ / \_'\`. `. ===`.                  Andrew Feng (Light Ring/Network Logic)
         / .-'  __/_   `.   _/.' .-' `-. ; ====;\.                  Divya Rustagi (RFID Interpriter)
        /.   `./    \ `. \ / -  /  .-'.' ====='  >                    Daniel Melo Cruz (Debugging)
       /  \  /  .-' `--.  / .' /  `-.' ======.' /               Michael S Maslakowski (Core/Startup/Main)
+                                                                    Stanley Kwok (Redis and Severs)
 
 ========================================================================================================================================
     """)
@@ -655,4 +662,5 @@ if __name__ == '__main__':
 #    /.   `./    \ `. \ / -  /  .-'.' ====='  >
 #   /  \  /  .-' `--.  / .' /  `-.' ======.' /
 # """)
+
 
