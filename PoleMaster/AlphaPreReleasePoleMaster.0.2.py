@@ -55,10 +55,16 @@ def core():
         main()
     light(1)
     
-    critical, status, admit = SendToServer(currentTag,ServerParameters[0]) #bolean,string,bolean
+    time.sleep(3)
+    critical, status, admit = True, 'bad has occoured', False #testing puroposes
+    #critical, status, admit = SendToServer(currentTag,ServerParameters[0]) #bolean,string,bolean
 
     if critical:                                                        #may add Soft Reset Proceedure on multi-fail???
-        print("WARNING: Crit Error from server reply:" + status)
+        print("WARNING: Crit Error from server reply: " + status)
+        light(4)
+        time.sleep(2)
+        light(3)
+        time.sleep(1)
         light(4)
         time.sleep(2)
         light(0)
@@ -178,6 +184,8 @@ def boxLockCheck(RfidSerial):
         LockState = not LockState
         return True
     if LockState == True:
+        light(3)
+        light(4)
         light(3)
         time.sleep(1)
         return True
