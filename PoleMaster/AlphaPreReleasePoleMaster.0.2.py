@@ -197,6 +197,51 @@ def boxLockCheck(RfidSerial):
 
 ####SERVER LOGIC####=============================================================================++++=================
 
+config = configparser.ConfigParser()
+config.read("config.ini")
+
+#------------------------GET DEFAULT VALUES FOR GLOBAL VARIABLES---------
+
+# uses config.ini to get some initial data from the last run
+# for example, the api_key can be obtained so that we have a possibly valid key
+
+def setDefaultGlobals():
+    global api_key, pin, url
+
+    #reading
+    api_key = config.get("default","api_key")
+    pin = config.get("default","pin")
+    url = config.get("default","url")
+    #location = config.get("default","location")
+
+    return
+
+#---------------------------OBTAIN API KEY--------------------------
+
+# running this function obtains an API key that will last for about 3 days
+# requires obtaining a pin value from adding scanner in redis site
+
+def getApiKey():
+    response = requests.post(API_Website, data = {'pin': pin})
+
+    #returns if status is error
+    status = response.status_code
+    if status < 200 or status > 299 :
+        try:
+            data = response.json()
+            print("ERROR WHEN REGISTERING API KEY: status code " + str(status))
+            print("description: " + data["message"] + "\n this error might be due to the API key already existing, if it runs fine then ignore it. If not make a new Scanner in redis-server and change the pin in config.ini")
+        except:
+            print("ERROR WHEN REGISTERING API KEY: status code " + str(status))
+            print("description: " +response.text + "\n this error might be due to the API key already existing, if it runs fine then ignore it. If not make a new Scanner in redis-server and change the pin in config.ini")
+        return 0
+
+    data = response.json()
+    global api_key
+    api_key = data["data"]["apikey"]
+    config.set("default","api_key",api_key)
+    print(api_key)
+    return
 # --------------------------- GET EVENT LOCATION AND DATA--------------------------------
 
 # function to get the event location if given a event title, used for the location in SendToServer
@@ -204,25 +249,32 @@ def boxLockCheck(RfidSerial):
 # all food events should return the same location unless its not all at the same place
 
 def getEventLocation(eventTitle):
-    foodLocation = 3
     Location_Website = url + "/scanner/events"
-    # obtains the json data
-    response = requests.get(Location_Website)
-    data = response.json()
+    try:
+        response = requests.get(Location_Website,timeout=15)
+    except requests.exceptions.Timeout as e:
+        print("CRITICAL: SERVER TIMEOUT")
+        return 0
 
-    # returns if status is error
+    #returns if status is error
     status = response.status_code
-    if status < 200 or status > 299:
-        print("ERROR: " + status)
+    if status < 200 or status > 299 :
+        try:
+            data = response.json()
+            print("ERROR WHEN GETTING EVENT LOCATION: status code " + str(status))
+            print("description: " + data["message"])
+        except:
+            print("ERROR WHEN GETTING EVENT LOCATION: status code " + str(status))
+            print("description: " + response.text)
         return 0
 
     # filtering what data to output
+    data = response.json()
     body = data["locations"]
     for body in body:
         if body["event_title"] == eventTitle:
-            # food[body["event_title"]] = body["uid"] #change this to choose what data to add to the output
+            #food[body["event_title"]] = body["uid"] #change this to choose what data to add to the output
             return body["event_location"]
-
 
 # ----------------------------CORE INFORMATION TRANSMISSION-----------------------------
 
@@ -230,25 +282,36 @@ def getEventLocation(eventTitle):
 # insert the wid from scan and food event location to return whats needed
 # NOTE - currently the only available location is 3 untill stan fixes it
 def SendToServer(wid, location):
+
     Scan_Website = url + "/scanner/scan"
-    arguments = {'wid': wid, 'location': location, 'apikey': api_key}
+    arguments = {'wid':wid, 'location':location, 'apikey':api_key}
     critical = False
     admit = False
 
     # obtains the json data and code
-    response = requests.post(Scan_Website, data=arguments)
-    data = response.json()
+    try:
+        response = requests.post(Scan_Website, data = arguments, timeout=15)
+    except requests.exceptions.Timeout as e:
+        return True, "CRITICAL: SERVER TIMEOUT", False
+
     status = response.status_code
 
-    # returns if status is error
-    if status < 200 or status > 299:
+    #returns if status is error
+    if status < 200 or status > 299 :
         critical = True
+        try:
+            data = response.json()
+            print("ERROR WHEN SENDING TO SERVER: status code " + str(status))
+            print("description: " + data["message"])
+        except:
+            print("ERROR WHEN SENDING TO SERVER: status code " + str(status))
+            print("description: " + response.text)
         return critical, status, admit
 
     # if no error, admit checks isRepeat and returns
+    data = response.json()
     admit = data["data"]["isRepeat"]
     return critical, status, admit
-
 
 # if __name__ == "__main__":
 #     location = getEventLocation("Lunch")
@@ -258,6 +321,7 @@ def SendToServer(wid, location):
 #     print(critical)
 #     print(status)
 #     print(admit)
+
 ####END SERVER LOGIC####==============================================================================================
 
 
