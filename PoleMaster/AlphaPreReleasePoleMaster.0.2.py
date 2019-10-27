@@ -12,7 +12,8 @@
 AdminKeys = [138561430561,"key 2 serial", "Key N serial"]
 LockState = False
 FirstTimeStartup = True
-ServerParameters = ["hack"] #server prameters will be store as globs
+ServerParameters = ["Lunch"] #server prameters will be store as globs
+CardDataImp = [0]
 url = "http://104.39.243.21:3000"
 api_key = "940469cc-4f9e-445c-833c-54f7ad106011" ####BUG  obtained from adding scanner to redis-server
 pin = ""
@@ -28,6 +29,7 @@ import threading
 import urllib
 import sys
 import os
+import multiprocessing
 #this is to read the serial number from the tag
 ###RFID IMPORT########
 from time import sleep #check me
@@ -51,13 +53,14 @@ def core():
     print("STATUS: Read tag " + str(currentTag))
     if boxLockCheck(currentTag) == True:
         main()
-
+    light(1)
+    
     critical, status, admit = SendToServer(currentTag,ServerParameters[0]) #bolean,string,bolean
 
     if critical:                                                        #may add Soft Reset Proceedure on multi-fail???
         print("WARNING: Crit Error from server reply:" + status)
         light(4)
-        time.sleep(1)
+        time.sleep(2)
         light(0)
         main()
 
@@ -97,10 +100,18 @@ def startUp(FirstTimeStartup):
     #while True:
         #if selection in Events: ##needs fixed with more info
 
-    print("STATUS: Config Choosen as " + Events)
+    print("STATUS: Config Choosen as: " + Events)
+    print("STATUS: API key: " + api_key)
+    print("STATUS: Admin Tokens are: " + str(AdminKeys))
+
+
     Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all \n")
     if Con == "N":
         sys.exit()
+    global ServerParameters    
+    ServerParameters.append(Events)
+    ServerParameters.append(api_key)
+    ServerParameters.append(AdminKeys)
     print("STATUS: Setup has concluded going into autonomous mode")
     #save slection parmeters to global
     global ServerParameters
@@ -142,13 +153,15 @@ def restore():
 def internet_test():
 
     print("STATUS: TESTING INTERNET")
-    url = "http://google.com" #change to hack server
+    url = "http://google.com" #global url var is hack server Com. this line on deployment
+    print("STATUS: CONECTING TO " + url)
+
     try:
         urllib.request.urlopen(url)
     except urllib.error.URLError as e:
-        print("WARNING: " + e.reason)
+        print("WARNING: TIME OUT")
         print("ERROR: Network Down, soft reset recommended")
-        time.wait(1500)
+        time.sleep(15)
         sys.exit()
 
     print("STATUS: Connection Pass, we can see " + url)
@@ -160,12 +173,13 @@ def boxLockCheck(RfidSerial):
     global AdminKeys, LockState
     if RfidSerial in AdminKeys:
         light(2)
-        time.sleep(5)
+        time.sleep(2)
+        print("WARNING: LOCK STATUS HAS BEEN UPDATED")
         LockState = not LockState
         return True
     if LockState == True:
         light(3)
-        time.sleep(5)
+        time.sleep(1)
         return True
     else:
         return False
@@ -236,35 +250,52 @@ def SendToServer(wid, location):
 #     print(critical)
 #     print(status)
 #     print(admit)
-####SERVER LOGIC####=============================================================================++++=================
+####END SERVER LOGIC####==============================================================================================
 
 
 ####RFID STRUCTURE####===============================================================================================
+def reading():
+    reader = SimpleMFRC522()
+    data = reader.read()
+    Dir = os.getcwd()
+    f = open(os.path.join(Dir, 'cache.txt'), 'w')
+    f.write(str(data[0]))
+    f.close()
 
 def SearchforTag(FirstTime):
 
     reader = SimpleMFRC522()
-
     # Try reading data from wrist band
     try:
         while True:
             count = 0
+            data = [0]
+            id = 0
+            Dir = os.getcwd()
             while FirstTime:
-                data = reader.read()
-                id = data[0]
-                #participant_number = data[1] #reomve dead code? verfify before alpha
-                time.sleep(1)
-                count =+ 1
-                if id:
+                p = multiprocessing.Process(target=reading)# Start reader.read as a process
+                p.start()
+                p.join(3)# Wait for 3 seconds or until process finishes
+                if p.is_alive(): # If thread is still active
+                    count = count + 1
+                    print("WARNING: STARTUP READER TIMEOUT (" + str(count) +"/5)")
+                    p.terminate()  # Terminate
+                    p.join()
+                else:
+                    #data = reader.read
+                    f = open(os.path.join(Dir, 'cache.txt'), 'r') #Look I know this is hacky as heck, but i could not for my life figure out how to return multiproceses without interupts - maz
+                    id = int(f.read())
+                    f.close()
+                    print(id)
+                if id !=0:
                     return id
-                if count == 10:
+                if count == 5:
                     return "-10000"
 
-            data = reader.read()
-            id = data[0]
-            #participant_number = data[1]
+            CardDataImpdata = reader.read()
+            id = CardDataImpdata[0]
             if id:
-               return id ##BUG ALLERT###  #figure out wich one we need?
+               return id ##BUG ALLERT###  #figure out wich one we need? # reslolved 1/26/19 maz
     finally:
         GPIO.cleanup()
 
@@ -552,3 +583,4 @@ if __name__ == '__main__':
 #    /.   `./    \ `. \ / -  /  .-'.' ====='  >
 #   /  \  /  .-' `--.  / .' /  `-.' ======.' /
 # """)
+
