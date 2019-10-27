@@ -25,3 +25,11 @@ Green means admit, Red is Deny and a blinking yellow-red means a critical error 
 
 Please reference the Boxes documentation as its behaviour is meant to emulate what the box would do for meal events.
 That's pretty much it any other questions please reference the in line documentations
+
+# bugs and todos
+
+Sometimes the critical light pattern makes the entire light ring stop wronging until soft reset
+
+there is a bunch of code for saving the config to a file and loading from the file that isn't really used correctly but easily could and would make setup alot smoother and the code a lot less spaghetti
+
+The use of time outs on the reader may be necessary as they are in place on start up but not for normal operations. It is also implemented in a very hacky way that works but could probably be improved by someone is more familiar with interrupts and multiprocessing.
