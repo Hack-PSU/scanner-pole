@@ -1,7 +1,7 @@
 # Point Of Location for Eating (POLE)
 Fall 2019 Alpha Release 1.0 
 
-# Instructions install
+# Instruction's to install
 Apply .img file to the SD card of your raspberry Pi, or following all the websites within the top part of the code
 The SSH password for this image is U: pi P: LnrBldShr
 
