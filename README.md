@@ -2,7 +2,7 @@
 Fall 2019 Alpha Release 1.0 
 
 # Instruction's to install
-Apply .img file to the SD card of your raspberry Pi, or following all the websites within the top part of the code
+Apply .img file to the SD card of your raspberry Pi found here: https://psu.box.com/s/uf8r3w5v60hdq888r9sm2rik1s06dlyy or following all the websites within the top part of the code
 The SSH password for this image is U: pi P: LnrBldShr
 
 Follow this diagram for wiring your RC522 RFID Reader up to the pi.
