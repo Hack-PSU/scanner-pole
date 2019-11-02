@@ -38,7 +38,7 @@ import configparser
 ####GLOBAL AND RESEVERES WARNING####
 # global active, available
 # global LockState
-AdminKeys = [138561430561, "key 2 serial", "Key N serial"] #Insert Admin token IDs in here
+AdminKeys = [3545823030, 2039178848, "Key N serial"] #Insert Admin token IDs in here
 LockState = False
 FirstTimeStartup = True
 ServerParameters = ["Lunch"]  # server prams will be store as globs, not currently implemented
@@ -46,6 +46,10 @@ url = "http://130.203.168.83:3000" #address for redis
 #http://104.39.243.21:3000
 api_key = "e44c5a46-d404-401d-8e55-cfa4a0ff71c2"  ####API key is curently obtained through a config file I don't belive this is used right now
 pin = "1633"
+event = "Lunch"
+eventMap = {"Lunch": "b2d5d8bec0824d55bb69cd927f3999a1","Dinner": "bd52731f5dae463699f2fb7b1f4578b5", "Ice Cream Social": "69ff4681db1f45ef89ea3d4062bae1b9", "Midnight Snack": "feaf0fac095c496db47c718bae2d2042", "Brunch": "a1cf19c4f4cd4dfca7a140e69e177c14"}
+eventID = ""
+
 config = configparser.ConfigParser()
 config.read("config.ini")
 
@@ -98,8 +102,7 @@ def core():
     if boxLockCheck(currentTag) == True: #this will check if the box is locked and change the lock state if an admin token is presented
         main() #if it was locked it will loop back to the top of this
     light(1) #sets light to yellow spinny ring for loading
-
-    critical, status, admit = SendToServer(currentTag, ServerParameters[0])  # bolean,string,boleanz ## takes in the tag as an int and the server params but it doesn't really use the server parmeters
+    critical, status, admit = SendToServer(currentTag)  # bolean,string,boleanz ## takes in the tag as an int and the server params but it doesn't really use the server parmeters
     time.sleep(1)
     if critical:  # may add Soft Reset Proceedure on multi-fail???
         print("WARNING: Crit Error from server reply: " + str(status)) #if timeout, not admit then it will give an error that normally means something needs restarted somewhere
@@ -111,7 +114,6 @@ def core():
         time.sleep(2)
         light(0)
         main()
-
     if admit == False:
         light(3)
         time.sleep(2)  # Pretty self explaintory here
@@ -128,6 +130,7 @@ def core():
 def startUp(FirstTimeStartup):
     setDefaultGlobals()
     check = SearchforTag(FirstTimeStartup)
+    # eventID = str(getEventLocation(event)) #turn off untill api function is fixed, currently using dictionary mapping
     if check != "-10000":  # -10000 will be returned to check when the reader times out 5 times  ##I did it 10/24/19 maz
         print("STATUS: Setup Has concluded going into autonomous mode")
         internet_test()
@@ -138,7 +141,7 @@ def startUp(FirstTimeStartup):
     internet_test()
     meal = input("INPUT REQUIRED: Input what meal this is \n")
     # [andrew] did it 10/24/19
-    Events = 3 #str(getEventLocation("Lunch"))
+    
     #Events = meal #demo code
 
     print("STATUS: " + str(Events) + " Slected")  # This will print the event given by the sever its implmenation does really effect anything
@@ -244,12 +247,14 @@ def boxLockCheck(RfidSerial):
 # for example, the api_key can be obtained so that we have a possibly valid key
 
 def setDefaultGlobals():
-    global api_key, pin, url
+    global api_key, pin, url, event, eventID
 
     # reading
     api_key = config.get("default", "api_key")
     pin = config.get("default", "pin")
     url = config.get("default", "url")
+    event = config.get("default", "event")
+    eventID = eventMap[event]
     # location = config.get("default","location")
 
     return
@@ -316,8 +321,8 @@ def getEventLocation(eventTitle):
     body = data["locations"]
     for body in body:
         if body["event_title"] == eventTitle:
-            # food[body["event_title"]] = body["uid"] #change this to choose what data to add to the output
-            return body["event_location"]
+            print("EVENT ID IS " + body["uid"])
+            return body["uid"] #change this to choose what data to add to the output
 
 
 # ----------------------------CORE INFORMATION TRANSMISSION-----------------------------
@@ -325,9 +330,10 @@ def getEventLocation(eventTitle):
 # function to check if the person has already has lunch or not
 # insert the wid from scan and food event location to return whats needed
 # NOTE - currently the only available location is 3 untill stan fixes it
-def SendToServer(wid, location):
+def SendToServer(wid):
     Scan_Website = url + "/scanner/scan"
-    arguments = {'wid': wid, 'location': location, 'apikey': api_key}
+    arguments = {'wid': wid, 'location': eventID, 'apikey': api_key} # i did a hard code day of -maz 
+    #print(location)
     critical = False
     admit = False
 
@@ -353,7 +359,7 @@ def SendToServer(wid, location):
 
     # if no error, admit checks isRepeat and returns
     data = response.json()
-    admit = data["data"]["isRepeat"]
+    admit = not data["data"]["isRepeat"]
     return critical, status, admit
 
 
@@ -644,7 +650,7 @@ def PLUS():
             |~|-|:| -|:|  |-|~|~||=|   ^V^  /____/ .___/\____/\____/ .___/\__, /   \____/\____/\____/_/   \____/\____/\__,_/\___/ 
             |=|=|:|- |:|- | |~|~|| |            /_/               /_/    /____/                                                        
             | |-_~__=_~__=|_^^^^^|/___
-            |-(=-=-=-=-=-(|=====/=_-=/\.           Fall 2019 Alpha Release 1.0.1 - Point Of Location for Eating (POLE)
+            |-(=-=-=-=-=-(|=====/=_-=/\.           Fall 2019 Alpha Release 1.0.2 - Point Of Location for Eating (POLE)
             | |=_-= _=- _=| -_=/=_-_/__\.
             | |- _ =_-  _-|=_- |]#| I II                        Technology Director - Julia M McCarthy
             |=|_/ \_-_= - |- = |]#| I II                     RFID Program Lead - Michael S Maslakowski (maz)
