@@ -130,6 +130,7 @@ def startUp(FirstTimeStartup):
     check = SearchforTag(FirstTimeStartup)
     if check != "-10000":  # -10000 will be returned to check when the reader times out 5 times  ##I did it 10/24/19 maz
         print("STATUS: Setup Has concluded going into autonomous mode")
+        internet_test()
         restore()  # will load old config no setup if any tag is presented (10/20/19 completed -maz)
         light(2)
         return
@@ -145,7 +146,7 @@ def startUp(FirstTimeStartup):
     # selection = input("INPUT REQUIRED: Select event ID as a ## number")  ###I belive this is dead code but it may be implemented if more user feedback is required for event slection
     # while True:
     # if selection in Events: ##needs fixed with more info
-    getApiKey()
+
     print("STATUS: Config Choosen as: " + Events)
     print("STATUS: API key: " + api_key)
     print("STATUS: Admin Tokens are: " + str(AdminKeys)) #displays what the config is
