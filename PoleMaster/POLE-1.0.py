@@ -1,4 +1,11 @@
-# PREREQUISITES (Should be included in image):
+# Prequistes (Should be included in image):
+# SPI: https://github.com/lthiery/SPI-Py
+# sudo pip3 install rpi_ws281x adafruit-circuitpython-neopixel
+#Follow this link for set-up:
+#https://pimylifeup.com/raspberry-pi-rfid-rc522/
+#https://github.com/pimylifeup/MFRC522-python/tree/master/mfrc522
+
+#Must be root or su!!!# PREREQUISITES (Should be included in image):
 #=====FOR LIGHT RING========
 # SPI: https://github.com/lthiery/SPI-Py
 # sudo pip3 install rpi_ws281x adafruit-circuitpython-neopixel
@@ -35,9 +42,10 @@ AdminKeys = [138561430561, "key 2 serial", "Key N serial"] #Insert Admin token I
 LockState = False
 FirstTimeStartup = True
 ServerParameters = ["Lunch"]  # server prams will be store as globs, not currently implemented
-url = "http://104.39.243.21:3000" #address for redis server
-api_key = "940469cc-4f9e-445c-833c-54f7ad106011"  ####API key is curently obtained through a config file I don't belive this is used right now
-pin = ""
+url = "http://130.203.168.83:3000" #address for redis
+#http://104.39.243.21:3000
+api_key = "e44c5a46-d404-401d-8e55-cfa4a0ff71c2"  ####API key is curently obtained through a config file I don't belive this is used right now
+pin = "1633"
 config = configparser.ConfigParser()
 config.read("config.ini")
 
@@ -92,9 +100,9 @@ def core():
     light(1) #sets light to yellow spinny ring for loading
 
     critical, status, admit = SendToServer(currentTag, ServerParameters[0])  # bolean,string,boleanz ## takes in the tag as an int and the server params but it doesn't really use the server parmeters
-
+    time.sleep(1)
     if critical:  # may add Soft Reset Proceedure on multi-fail???
-        print("WARNING: Crit Error from server reply: " + status) #if timeout, not admit then it will give an error that normally means something needs restarted somewhere
+        print("WARNING: Crit Error from server reply: " + str(status)) #if timeout, not admit then it will give an error that normally means something needs restarted somewhere
         light(4)
         time.sleep(2)
         light(3)
@@ -118,6 +126,7 @@ def core():
 
 ## --------------STARTUP LOGIC-------------------------
 def startUp(FirstTimeStartup):
+    setDefaultGlobals()
     check = SearchforTag(FirstTimeStartup)
     if check != "-10000":  # -10000 will be returned to check when the reader times out 5 times  ##I did it 10/24/19 maz
         print("STATUS: Setup Has concluded going into autonomous mode")
@@ -128,7 +137,7 @@ def startUp(FirstTimeStartup):
     internet_test()
     meal = input("INPUT REQUIRED: Input what meal this is \n")
     # [andrew] did it 10/24/19
-    Events = str(getEventLocation(meal))
+    Events = 3 #str(getEventLocation("Lunch"))
     #Events = meal #demo code
 
     print("STATUS: " + Events + " Slected")  # This will print the event given by the sever its implmenation does really effect anything
@@ -136,7 +145,7 @@ def startUp(FirstTimeStartup):
     # selection = input("INPUT REQUIRED: Select event ID as a ## number")  ###I belive this is dead code but it may be implemented if more user feedback is required for event slection
     # while True:
     # if selection in Events: ##needs fixed with more info
-
+    getApiKey()
     print("STATUS: Config Choosen as: " + Events)
     print("STATUS: API key: " + api_key)
     print("STATUS: Admin Tokens are: " + str(AdminKeys)) #displays what the config is
@@ -150,7 +159,6 @@ def startUp(FirstTimeStartup):
     ServerParameters.append(AdminKeys)
     print("STATUS: Setup has concluded going into autonomous mode")
     # save slection parmeters to global
-    global ServerParameters
     ServerParameters = [Events]  ###BUG CHECK after we know paremeters #fixed but need rechecked 9/24/19 ## still not really impemented at alpha 10/27/19 -maz
     # save section with save() function
     Save()
@@ -287,7 +295,7 @@ def getEventLocation(eventTitle):
     try:
         response = requests.get(Location_Website, timeout=15)
     except requests.exceptions.Timeout as e:
-        print("CRITICAL: SERVER TIMEOUT")
+        print("CRITICAL: SERVER TIMEOUT 1")
         return 0
 
     # returns if status is error
@@ -326,7 +334,7 @@ def SendToServer(wid, location):
     try:
         response = requests.post(Scan_Website, data=arguments, timeout=15)
     except requests.exceptions.Timeout as e:
-        return True, "CRITICAL: SERVER TIMEOUT", False
+        return True, "CRITICAL: SERVER TIMEOUT 2", False
 
     status = response.status_code
 
@@ -336,10 +344,10 @@ def SendToServer(wid, location):
         try:
             data = response.json()
             print("ERROR WHEN SENDING TO SERVER: status code " + str(status))
-            print("description: " + data["message"])
+            print("description1: " + data["message"])
         except:
             print("ERROR WHEN SENDING TO SERVER: status code " + str(status))
-            print("description: " + response.text)
+            print("description2: " + response.text)
         return critical, status, admit
 
     # if no error, admit checks isRepeat and returns
@@ -394,6 +402,8 @@ def SearchforTag(FirstTime):
                     f = open(os.path.join(Dir, 'cache.txt'),'r')
                     id = int(f.read())
                     f.close()
+                    new = str(hex(id))[2:10] #takes out the first 8 hex bits
+                    id = int(new[6:8] + new[4:6] + new[2:4] + new[0:2],16) #flips it
                     print(id)
                 if id != 0:
                     return id
@@ -402,6 +412,8 @@ def SearchforTag(FirstTime):
 
             CardDataImpdata = reader.read()
             id = CardDataImpdata[0]
+            new = str(hex(id))[2:10] #takes out the first 8 hex bits
+            id = int(new[6:8] + new[4:6] + new[2:4] + new[0:2],16) #flips it
             if id:
                 return id
     finally:
@@ -631,7 +643,7 @@ def PLUS():
             |~|-|:| -|:|  |-|~|~||=|   ^V^  /____/ .___/\____/\____/ .___/\__, /   \____/\____/\____/_/   \____/\____/\__,_/\___/ 
             |=|=|:|- |:|- | |~|~|| |            /_/               /_/    /____/                                                        
             | |-_~__=_~__=|_^^^^^|/___
-            |-(=-=-=-=-=-(|=====/=_-=/\.             Fall 2019 Alpha Release 1.0 - Point Of Location for Eating (POLE)
+            |-(=-=-=-=-=-(|=====/=_-=/\.           Fall 2019 Alpha Release 1.0.1 - Point Of Location for Eating (POLE)
             | |=_-= _=- _=| -_=/=_-_/__\.
             | |- _ =_-  _-|=_- |]#| I II                        Technology Director - Julia M McCarthy
             |=|_/ \_-_= - |- = |]#| I II                     RFID Program Lead - Michael S Maslakowski (maz)
@@ -695,4 +707,3 @@ if __name__ == '__main__':
 #    /.   `./    \ `. \ / -  /  .-'.' ====='  >
 #   /  \  /  .-' `--.  / .' /  `-.' ======.' /
 # """)
-
