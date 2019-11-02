@@ -140,7 +140,7 @@ def startUp(FirstTimeStartup):
     Events = 3 #str(getEventLocation("Lunch"))
     #Events = meal #demo code
 
-    print("STATUS: " + Events + " Slected")  # This will print the event given by the sever its implmenation does really effect anything
+    print("STATUS: " + str(Events) + " Slected")  # This will print the event given by the sever its implmenation does really effect anything
 
     # selection = input("INPUT REQUIRED: Select event ID as a ## number")  ###I belive this is dead code but it may be implemented if more user feedback is required for event slection
     # while True:
