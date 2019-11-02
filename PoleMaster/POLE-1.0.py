@@ -147,8 +147,8 @@ def startUp(FirstTimeStartup):
     # while True:
     # if selection in Events: ##needs fixed with more info
 
-    print("STATUS: Config Choosen as: " + Events)
-    print("STATUS: API key: " + api_key)
+    print("STATUS: Config Choosen as: " + str(Events))
+    print("STATUS: API key: " + str(api_key))
     print("STATUS: Admin Tokens are: " + str(AdminKeys)) #displays what the config is
 
     Con = input("INPUT REQUIRED: Confirm setup with any key, 'N' will abort all \n") # confirmation to proceed to normal opps
