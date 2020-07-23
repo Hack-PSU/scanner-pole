@@ -34,5 +34,5 @@ there is a bunch of code for saving the config to a file and loading from the fi
 
 The use of time outs on the reader may be necessary as they are in place on start up but not for normal operations. It is also implemented in a very hacky way that works but could probably be improved by someone who is more familiar with interrupts and multiprocessing.
 
-If the pi has its network is completely disconnected it will trigger a hard crash
+If the pi has its network completely disconnected it will trigger a hard crash
 
